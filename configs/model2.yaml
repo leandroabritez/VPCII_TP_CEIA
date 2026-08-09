@@ -1,0 +1,31 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Configuración de entrenamiento – RT-DETR (Modelo 2)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Modelo base preentrenado (COCO)
+model_weights: "rtdetr-l.pt"   # opciones: rtdetr-l / rtdetr-x
+
+# Hiperparámetros de entrenamiento
+epochs: 100
+imgsz: 640
+batch: 8            # RT-DETR es más pesado, batch size menor
+lr0: 0.0001         # DETR típicamente usa LR más bajo
+lrf: 0.00001
+weight_decay: 0.0001
+warmup_epochs: 2.0
+
+# RT-DETR es decoder-based, augmentation conservadora
+hsv_h: 0.015
+hsv_s: 0.7
+hsv_v: 0.4
+degrees: 0.0
+translate: 0.1
+scale: 0.5
+flipud: 0.0
+fliplr: 0.5
+mosaic: 0.0         # Mosaic no recomendado para DETR
+mixup: 0.0
+
+# Parámetros de inferencia
+conf: 0.25
+iou: 0.7

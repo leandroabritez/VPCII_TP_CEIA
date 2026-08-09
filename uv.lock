@@ -1,0 +1,57 @@
+version = 1
+revision = 1
+requires-python = ">=3.10"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Este archivo fue generado con: uv lock
+# Para regenerarlo con versiones exactas, ejecutar en el entorno activado:
+#   uv lock
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[package]]
+name = "vpcii-tp-fracture-detection"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+  { name = "torch" },
+  { name = "torchvision" },
+  { name = "ultralytics" },
+  { name = "roboflow" },
+  { name = "opencv-python" },
+  { name = "pillow" },
+  { name = "numpy" },
+  { name = "pandas" },
+  { name = "scikit-learn" },
+  { name = "matplotlib" },
+  { name = "seaborn" },
+  { name = "ipykernel" },
+  { name = "ipywidgets" },
+  { name = "tqdm" },
+  { name = "pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+  { name = "torch", specifier = ">=2.2.0" },
+  { name = "torchvision", specifier = ">=0.17.0" },
+  { name = "ultralytics", specifier = ">=8.3.0" },
+  { name = "roboflow", specifier = ">=1.1.0" },
+  { name = "opencv-python", specifier = ">=4.9.0.80" },
+  { name = "Pillow", specifier = ">=10.2.0" },
+  { name = "numpy", specifier = ">=1.26.0" },
+  { name = "pandas", specifier = ">=2.2.0" },
+  { name = "scikit-learn", specifier = ">=1.4.0" },
+  { name = "matplotlib", specifier = ">=3.8.0" },
+  { name = "seaborn", specifier = ">=0.13.0" },
+  { name = "ipykernel", specifier = ">=6.29.0" },
+  { name = "ipywidgets", specifier = ">=8.1.0" },
+  { name = "tqdm", specifier = ">=4.66.0" },
+  { name = "PyYAML", specifier = ">=6.0.1" },
+]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Nota: el uv.lock completo con hashes de todas las dependencias transitivas
+# se genera automáticamente al correr `uv sync` en el entorno del proyecto.
+# Este archivo es un placeholder que define la estructura; reemplazarlo con
+# el lock generado por uv en la máquina de desarrollo.
+# ─────────────────────────────────────────────────────────────────────────────

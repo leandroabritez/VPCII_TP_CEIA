@@ -1,0 +1,33 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Configuración de entrenamiento – YOLOv11
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Modelo base preentrenado (COCO)
+model_weights: "yolo11m.pt"   # opciones: yolo11n / yolo11s / yolo11m / yolo11l / yolo11x
+
+# Hiperparámetros de entrenamiento
+epochs: 100
+imgsz: 640
+batch: 16
+lr0: 0.01           # tasa de aprendizaje inicial
+lrf: 0.001          # tasa de aprendizaje final (cosine LR scheduler)
+momentum: 0.937
+weight_decay: 0.0005
+warmup_epochs: 3.0
+
+# Data Augmentation
+hsv_h: 0.015        # variación de matiz (Hue)
+hsv_s: 0.7          # variación de saturación
+hsv_v: 0.4          # variación de brillo (Value)
+degrees: 5.0        # rotación aleatoria (grados)
+translate: 0.1      # traslación aleatoria
+scale: 0.5          # escalado aleatorio
+flipud: 0.0         # flip vertical (0.0 = desactivado – rad. no se suelen invertir)
+fliplr: 0.5         # flip horizontal
+mosaic: 1.0         # mosaic augmentation
+mixup: 0.1          # mixup augmentation
+copy_paste: 0.0     # copy-paste (requiere segmentación)
+
+# Parámetros de NMS
+conf: 0.25          # umbral de confianza mínima en inferencia
+iou: 0.7            # umbral IoU para NMS
