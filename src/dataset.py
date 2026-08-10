@@ -13,13 +13,18 @@ import pandas as pd
 from PIL import Image
 
 
-def load_annotations_df(split_dir: Path) -> pd.DataFrame:
+def load_annotations_df(
+    split_dir: Path,
+    class_names: list[str] | None = None,
+) -> pd.DataFrame:
     """
     Lee todas las anotaciones YOLO-format (.txt) de un split dado y devuelve
     un DataFrame con columnas: image, class_id, class_name, cx, cy, bbox_w, bbox_h.
 
     Args:
         split_dir: Directorio del split (ej. data/bone-fracture-detection-daoon-1/train)
+        class_names: Lista de nombres de clases en el orden del data.yaml.
+                     Si es None, usa {0: 'fracture'} como fallback.
 
     Returns:
         pd.DataFrame con una fila por anotación.
@@ -27,8 +32,11 @@ def load_annotations_df(split_dir: Path) -> pd.DataFrame:
     labels_dir = split_dir / "labels"
     images_dir = split_dir / "images"
 
-    # Mapeo de class_id a nombre (asumimos que el YAML define solo 'fracture')
-    class_map = {0: "fracture"}
+    # Construir mapeo class_id → nombre
+    if class_names is not None:
+        class_map = {i: name for i, name in enumerate(class_names)}
+    else:
+        class_map = {0: "fracture"}
 
     records = []
     for label_path in sorted(labels_dir.glob("*.txt")):
