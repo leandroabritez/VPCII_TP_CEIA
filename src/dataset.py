@@ -13,38 +13,58 @@ import pandas as pd
 from PIL import Image
 
 
-def load_annotations_df(split_dir: Path) -> pd.DataFrame:
+def load_annotations_df(split_dir: Path, data_config: dict) -> pd.DataFrame:
     """
     Lee todas las anotaciones YOLO-format (.txt) de un split dado y devuelve
-    un DataFrame con columnas: image, class_id, class_name, cx, cy, bbox_w, bbox_h.
+    un DataFrame con una fila por anotación.
 
     Args:
-        split_dir: Directorio del split (ej. data/bone-fracture-detection-daoon-1/train)
+        split_dir: Directorio del split.
+        data_config: Configuración del dataset obtenida desde data.yaml.
 
     Returns:
         pd.DataFrame con una fila por anotación.
     """
-    labels_dir = split_dir / "labels"
-    images_dir = split_dir / "images"
 
-    # Mapeo de class_id a nombre (asumimos que el YAML define solo 'fracture')
-    class_map = {0: "fracture"}
+    labels_dir = split_dir / "labels"
+
+    # Mapeo de class_id a nombre utilizando data.yaml
+    class_map = {
+        class_id: class_name
+        for class_id, class_name in enumerate(data_config["names"])
+    }
 
     records = []
+
     for label_path in sorted(labels_dir.glob("*.txt")):
+
         img_name = label_path.stem
+
         with open(label_path) as f:
+
             for line in f:
+
                 line = line.strip()
+
                 if not line:
                     continue
+
                 parts = line.split()
+
                 class_id = int(parts[0])
-                cx, cy, w, h = map(float, parts[1:5])
+
+                cx, cy, w, h = map(
+                    float,
+                    parts[1:5]
+                )
+
                 records.append({
                     "image": img_name,
                     "class_id": class_id,
-                    "class_name": class_map.get(class_id, str(class_id)),
+                    "class_name": class_map.get(
+                        class_id,
+                        str(class_id)
+                    ),
                     "cx": cx,
                     "cy": cy,
                     "bbox_w": w,
