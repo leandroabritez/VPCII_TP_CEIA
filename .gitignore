@@ -1,0 +1,35 @@
+# Entorno y dependencias
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.eggs/
+*.egg-info/
+dist/
+build/
+
+# Variables de entorno (¡NUNCA subir al repo!)
+.env
+.env.*
+
+# Dataset (muy pesado, descargar con scripts/download_dataset.py)
+data/bone-fracture-detection-daoon-1/
+
+# Resultados y checkpoints de entrenamiento
+results/*/
+!results/.gitkeep
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+
+# LaTeX auxiliares
+LaTeX/*.aux
+LaTeX/*.log
+LaTeX/*.out
+LaTeX/*.toc
+LaTeX/*.synctex.gz
+
+# OS
+.DS_Store
+Thumbs.db

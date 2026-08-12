@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Detección automática de fracturas óseas en radiografías mediante modelos de visión por computadora"
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 authors = [
   { name = "Lucia T. Capon Paul" },
   { name = "Cesar Orellana" },
@@ -55,3 +55,20 @@ target-version = ["py310", "py311"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
+
+# ── uv: fuente explícita para PyTorch ────────────────────────────────────────
+# uv necesita saber de qué índice proviene torch para resolver sin ambigüedad.
+# Usamos el índice estándar de PyTorch (CPU por defecto; cambiar a cu121/cu124
+# para soporte CUDA).
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cpu" },
+]
+torchvision = [
+  { index = "pytorch-cpu" },
+]
