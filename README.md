@@ -51,12 +51,14 @@ VPCII_TP_CEIA/
 ├── data/
 │   └── README.md              # instrucciones de descarga
 ├── notebooks/
+│   ├── 00_preprocessing.ipynb # preprocesamiento de radiografías
 │   ├── 01_EDA.ipynb           # análisis exploratorio
 │   ├── 02_train_yolo.ipynb    # fine-tuning YOLOv11
 │   ├── 03_train_model2.ipynb  # fine-tuning RT-DETR
 │   └── 04_evaluation.ipynb    # comparación y métricas finales
 ├── src/
 │   ├── dataset.py             # carga de anotaciones y estadísticas
+│   ├── preprocessing.py       # funciones reutilizables de preprocesamiento
 │   ├── evaluate.py            # métricas y curvas PR
 │   └── visualize.py           # visualización de detecciones
 ├── configs/
@@ -92,6 +94,7 @@ pip install -r requirements.txt
 
 1. Descargar el dataset → instrucciones en `data/README.md`
 2. Ejecutar los notebooks en orden:
+   - `00_preprocessing.ipynb` → Crear el dataset preprocesado (opcional, para el experimento con CLAHE y unsharp masking)
    - `01_EDA.ipynb` → Explorar el dataset
    - `02_train_yolo.ipynb` → Entrenar YOLOv11
    - `03_train_model2.ipynb` → Entrenar RT-DETR
