@@ -8,11 +8,11 @@ __pycache__/
 dist/
 build/
 
-# Variables de entorno (¡NUNCA subir al repo!)
+# Variables de entorno 
 .env
 .env.*
 
-# Dataset (muy pesado, descargar con scripts/download_dataset.py)
+# Dataset (descargar con scripts/download_dataset.py)
 data/bone-fracture-detection-daoon-1/
 data/bone-fracture-detection-daoon-1-preprocessed/
 data/*.zip
