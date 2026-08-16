@@ -14,6 +14,9 @@ build/
 
 # Dataset (muy pesado, descargar con scripts/download_dataset.py)
 data/bone-fracture-detection-daoon-1/
+data/bone-fracture-detection-daoon-1-preprocessed/
+data/*.zip
+*.zip
 
 # Resultados y checkpoints de entrenamiento
 results/*/
