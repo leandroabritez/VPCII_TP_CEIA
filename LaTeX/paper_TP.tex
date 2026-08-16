@@ -1,0 +1,451 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+%Template version as of 6/27/2024
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{booktabs}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Detección Automática de Fracturas Óseas en Radiografías\\
+Mediante YOLOv11 y RT-DETR con Preprocesamiento Fotométrico}
+
+\author{
+\IEEEauthorblockN{Lucia T. Capon Paul}
+\IEEEauthorblockA{\textit{CEIA -- FIUBA} \\
+Buenos Aires, Argentina}
+\and
+\IEEEauthorblockN{César Andrés Orellana}
+\IEEEauthorblockA{\textit{CEIA -- FIUBA} \\
+Buenos Aires, Argentina}
+\and
+\IEEEauthorblockN{Leandro Britez}
+\IEEEauthorblockA{\textit{CEIA -- FIUBA} \\
+Buenos Aires, Argentina}
+}
+
+\maketitle
+
+% ─── ABSTRACT ────────────────────────────────────────────────────────────────
+\begin{abstract}
+La detección automatizada de fracturas óseas en imágenes radiográficas representa
+un desafío clínico de alto impacto, donde la precisión y la velocidad de diagnóstico
+son críticas. En este trabajo se presenta un prototipo basado en modelos de detección
+de objetos preentrenados para la identificación y localización de fracturas en
+radiografías de múltiples regiones anatómicas. Se comparan dos arquitecturas modernas:
+YOLOv11 \cite{b3}, representativa del paradigma \textit{anchor-free} de una etapa,
+y RT-DETR \cite{b4}, un detector basado en transformers de tiempo real. Ambos modelos
+son ajustados (\textit{fine-tuned}) sobre el dataset público \textit{Bone Fracture
+Detection} de Roboflow Universe \cite{b5}, que contiene 4.148 radiografías
+distribuidas en seis clases anatómicas. Previamente al entrenamiento se aplica
+un pipeline de preprocesamiento fotométrico que combina normalización robusta por
+percentiles, ecualización adaptativa de histograma con límite de contraste (CLAHE)
+y enmascaramiento no nítido (\textit{unsharp masking}), siguiendo la metodología
+propuesta por Srinivasu \textit{et al.} \cite{b1}. La evaluación se realiza en
+términos de mAP@0.5, mAP@0.5:0.95, F1-score y latencia de inferencia.
+% [COMPLETAR CON RESULTADOS FINALES]
+\end{abstract}
+
+\begin{IEEEkeywords}
+detección de objetos, fracturas óseas, YOLOv11, RT-DETR, CLAHE, \textit{unsharp
+masking}, \textit{deep learning}, visión por computadora, radiografías.
+\end{IEEEkeywords}
+
+% ─── I. INTRODUCCIÓN ─────────────────────────────────────────────────────────
+\section{Introducción}
+
+La interpretación de imágenes radiográficas es una tarea clínica fundamental en el
+diagnóstico de traumatismos musculoesqueléticos. El cuerpo humano posee 206 huesos
+cuyas fracturas pueden presentarse como interrupciones transversales, oblicuas,
+espirales o conminutas, muchas veces con escaso contraste respecto del tejido
+circundante \cite{b1}. La identificación visual requiere experiencia especializada y
+puede verse comprometida por factores como la carga de trabajo, la fatiga del
+profesional o variaciones instrumentales en la adquisición de la imagen.
+
+Los sistemas de visión por computadora basados en \textit{deep learning} han
+demostrado capacidad para asistir en tareas de detección y localización de
+patologías en imágenes médicas \cite{b2}. En particular, los detectores de objetos
+permiten no solo determinar la presencia de una lesión sino también localizar su
+posición mediante cuadros delimitadores (\textit{bounding boxes}), lo que
+complementa el criterio clínico sin pretender reemplazarlo.
+
+Un antecedente directo es el trabajo de Srinivasu \textit{et al.} \cite{b1}, que
+evaluó YOLOv10 para detectar fracturas multiclase en radiografías con el mismo
+dataset de Roboflow Universe. Los autores combinaron CLAHE y \textit{unsharp masking}
+como preprocesamiento fotométrico y reportaron una mejora de mAP@0.5 de 0,948 a
+0,961 respecto de imágenes sin procesar. Motivados por este antecedente, el presente
+trabajo compara YOLOv11 y RT-DETR bajo un protocolo de partición fija y evalúa el
+efecto del mismo pipeline de preprocesamiento sobre la capacidad de localización y
+clasificación de fracturas.
+
+El objetivo de este trabajo es desarrollar y evaluar un prototipo funcional capaz
+de detectar automáticamente fracturas óseas en radiografías, comparando el
+desempeño de YOLOv11 \cite{b3} y RT-DETR \cite{b4} en términos de métricas de
+detección y latencia de inferencia. Los aportes principales son: (i) la aplicación
+y justificación de un pipeline de preprocesamiento conservador adaptado a la
+variabilidad del dataset, (ii) la comparación directa de un detector de una etapa
+con un detector basado en transformers bajo el mismo protocolo experimental, y
+(iii) el análisis por clase para identificar limitaciones del dataset.
+
+% ─── II. METODOLOGÍA ─────────────────────────────────────────────────────────
+\section{Metodología, Diseño y Desarrollo}
+
+\subsection{Dataset}
+
+Se utilizó el dataset \textit{Bone Fracture Detection} disponible públicamente en
+Roboflow Universe (versión~1, licencia CC~BY~4.0) \cite{b5}. El dataset contiene
+radiografías de múltiples regiones anatómicas con anotaciones en formato YOLO
+(\textit{bounding boxes}). La Tabla~\ref{tab:dataset} resume la distribución de
+imágenes y anotaciones por partición.
+
+\begin{table}[htbp]
+\caption{Distribución del dataset por partición}
+\label{tab:dataset}
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Partición} & \textbf{Imágenes} & \textbf{Con bbox} & \textbf{Anotaciones} \\
+\midrule
+Train & 3.631 & 1.804 & 2.088 \\
+Valid & 348   & 173   & 204   \\
+Test  & 169   & 83    & 96    \\
+\midrule
+\textbf{Total} & \textbf{4.148} & \textbf{2.060} & \textbf{2.388} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+Las imágenes sin caja delimitadora se tratan como negativos verdaderos y permiten
+al modelo aprender cuándo no debe activarse. No se hallaron duplicados exactos entre
+particiones (verificado mediante hash SHA-256), lo que descarta fuga de datos
+(\textit{data leakage}). La auditoría de anotaciones no detectó clases fuera de
+rango ni geometrías inválidas.
+
+El dataset original declara siete clases. Durante el análisis exploratorio se
+comprobó que la clase \texttt{humerus} presentaba únicamente tres anotaciones en
+entrenamiento y ninguna en validación ni test, constituyendo una anomalía residual
+sin representatividad estadística. Esas anotaciones fueron unificadas
+programáticamente con la clase \texttt{humerus fracture} por coherencia anatómica,
+resultando en seis clases efectivas. La distribución de anotaciones en entrenamiento
+se muestra en la Tabla~\ref{tab:clases}.
+
+\begin{table}[htbp]
+\caption{Distribución de anotaciones por clase en entrenamiento}
+\label{tab:clases}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Clase} & \textbf{Anotaciones} & \textbf{\%} \\
+\midrule
+fingers positive  & 531 & 25{,}43 \\
+shoulder fracture & 360 & 17{,}24 \\
+elbow positive    & 339 & 16{,}24 \\
+forearm fracture  & 316 & 15{,}13 \\
+humerus fracture  & 314 & 15{,}04 \\
+wrist positive    & 228 & 10{,}92 \\
+\midrule
+\textbf{Total}    & \textbf{2.088} & \textbf{100} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+El dataset presenta un desbalance leve a moderado: la clase mayoritaria
+(\texttt{fingers positive}) más que duplica a la minoritaria (\texttt{wrist
+positive}). Esto se tiene en cuenta al analizar las métricas por clase, en
+particular para determinar si el modelo logra detectar correctamente las
+categorías con menor representación. El análisis exploratorio reveló además que
+las imágenes tienen resoluciones heterogéneas (ancho medio: 412~px, alto medio:
+486~px), niveles de brillo variados (media: 54/255) y que aproximadamente la mitad
+de cada partición carece de fractura anotada, lo que refleja la prevalencia clínica
+real.
+
+\subsection{Preprocesamiento}
+
+Las imágenes presentan variaciones de contraste y brillo atribuibles a diferencias
+en el equipo, la posición del paciente y la exportación del archivo. Para mejorar
+la visibilidad local de las estructuras óseas antes del entrenamiento, se aplicó un
+pipeline de preprocesamiento determinista, igual sobre las tres particiones. No se
+modificó la geometría de las imágenes ni las anotaciones.
+
+El pipeline se evaluó comparando visualmente dos configuraciones. Se eligió la
+configuración~P2 (realce conservador) sobre P1 (realce más agresivo) porque P1
+amplificaba el granulado y los marcadores de los equipos, introduciendo artefactos
+potencialmente confusos para el detector.
+
+\subsubsection{Normalización robusta por percentiles}
+
+Se escalan las intensidades al rango $[0, 255]$ descartando los valores extremos
+(percentiles 1 y~99). Esto evita que píxeles anómalos muy oscuros o muy claros
+dominen el histograma global, produciendo imágenes con rangos dinámicos comparables
+entre radiografías de distintos equipos.
+
+\subsubsection{CLAHE}
+
+La ecualización adaptativa de histograma con límite de contraste (CLAHE) divide la
+imagen en regiones de $8 \times 8$ píxeles y ecualiza el histograma local con un
+límite de amplificación de 1{,}5. A diferencia de la ecualización global, el límite
+de contraste evita la amplificación excesiva del ruido en regiones homogéneas,
+mejorando la visibilidad de estructuras óseas de bajo contraste sin distorsionar
+las zonas uniformes.
+
+\subsubsection{Enmascaramiento no nítido (\textit{unsharp masking})}
+
+El \textit{unsharp masking} refuerza las componentes de alta frecuencia (bordes)
+restando a la imagen una versión suavizada de sí misma:
+
+\begin{equation}
+O(x,y) = I(x,y) + \gamma\bigl[I(x,y) - I_b(x,y)\bigr],
+\label{eq:unsharp}
+\end{equation}
+
+donde $I(x,y)$ es la intensidad original, $I_b(x,y)$ la imagen suavizada con
+$\sigma = 1{,}0$ y $\gamma = 0{,}25$ controla la magnitud del realce. Un valor
+conservador de $\gamma$ resalta transiciones sutiles sin introducir bordes
+artificiales. Los parámetros completos de la configuración~P2 se resumen en la
+Tabla~\ref{tab:preproc}.
+
+\begin{table}[htbp]
+\caption{Parámetros del pipeline de preprocesamiento (configuración P2)}
+\label{tab:preproc}
+\begin{center}
+\begin{tabular}{lc}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} \\
+\midrule
+Normalización percentil bajo / alto & 1 / 99 \\
+CLAHE clip limit                    & 1{,}5  \\
+CLAHE tile grid size                & $8 \times 8$ \\
+Unsharp $\sigma$                    & 1{,}0  \\
+Unsharp $\gamma$                    & 0{,}25 \\
+Calidad JPEG exportación            & 95     \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\subsection{Arquitecturas}
+
+\textbf{YOLOv11} \cite{b3}: detector \textit{anchor-free} de una sola etapa de la
+familia Ultralytics. Se utilizó la variante \texttt{yolo11m.pt} (medium, $\approx$20M
+parámetros) preentrenada en COCO. YOLOv11 introduce mejoras en el bloque C3k2,
+atención SPPF con cabezal desacoplado y una cadena de regresión de cuadros más
+eficiente que sus predecesores.
+
+\textbf{RT-DETR-L} \cite{b4}: detector basado en transformers diseñado para
+inferencia en tiempo real. Se utilizó la variante \texttt{rtdetr-l.pt} (large,
+$\approx$32M parámetros) preentrenada en COCO. RT-DETR emplea un \textit{backbone}
+ResNet con un \textit{encoder} híbrido CNN-transformer y un \textit{decoder} de
+atención cruzada que elimina la supresión de no máximos (NMS) del post-procesamiento.
+
+La elección de estas dos arquitecturas responde a la necesidad de comparar el
+paradigma de detección de una etapa con regresión directa (YOLOv11) frente al
+paradigma basado en atención global (RT-DETR), analizando el compromiso entre
+precisión de localización y latencia de inferencia.
+
+\subsection{Configuración del Entrenamiento}
+
+Ambos modelos se configuraron para un máximo de 100 épocas con tamaño de entrada
+$640 \times 640$ píxeles. La Tabla~\ref{tab:hparams} detalla los hiperparámetros
+de cada modelo. El ajuste fino (\textit{fine-tuning}) transfiere los pesos
+preentrenados en COCO y reemplaza la cabeza de clasificación para adaptarla a las
+seis clases del dataset.
+
+\begin{table}[htbp]
+\caption{Hiperparámetros de entrenamiento por modelo}
+\label{tab:hparams}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Parámetro}    & \textbf{YOLOv11}   & \textbf{RT-DETR-L}  \\
+\midrule
+Pesos base            & yolo11m.pt         & rtdetr-l.pt         \\
+Épocas (máx.)         & 100                & 100                 \\
+Early stopping        & --                 & patience = 20       \\
+Optimizador           & auto (SGD)         & AdamW               \\
+Batch size            & 16                 & 8                   \\
+lr$_0$                & 0{,}01             & 0{,}0001            \\
+lr$_f$                & 0{,}001            & 0{,}00001           \\
+Weight decay          & 0{,}0005           & 0{,}0001            \\
+Warmup epochs         & 3                  & 2                   \\
+Mosaic aug.           & 1{,}0              & 0{,}0               \\
+Mixup aug.            & 0{,}1              & 0{,}0               \\
+Flip horizontal       & 0{,}5              & 0{,}5               \\
+Flip vertical         & 0{,}0              & 0{,}0               \\
+Conf. umbral inf.     & 0{,}25             & 0{,}25              \\
+IoU NMS               & 0{,}70             & 0{,}70              \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+Para RT-DETR se desactivaron \textit{mosaic} y \textit{mixup} por incompatibilidad
+con la arquitectura basada en atención. Se empleó una tasa de aprendizaje
+significativamente menor (0,0001 vs.\ 0,01) dado que los \textit{decoders} de tipo
+DETR son sensibles a tasas elevadas durante el ajuste fino; el optimizador se fijó
+explícitamente en AdamW, dado que el modo automático de selección de Ultralytics
+(\texttt{optimizer=auto}) ignora la tasa de aprendizaje especificada por el usuario
+y determina una propia. Asimismo, se detectó que el entrenamiento inicial de
+RT-DETR divergía (\textit{loss} de clasificación con valores NaN) al utilizar
+precisión mixta (AMP); este comportamiento es un problema conocido de los
+\textit{decoders} basados en atención de tipo DETR bajo \texttt{fp16}, por lo que
+se deshabilitó AMP para dicho modelo. Se incorporó además un criterio de
+\textit{early stopping} (\texttt{patience=20}) para evitar cómputo innecesario una
+vez alcanzada la meseta de convergencia; con este criterio, RT-DETR-L detuvo su
+entrenamiento en la época 58, correspondiendo el mejor checkpoint a la época 38.
+El entrenamiento se realizó en Google Colab con GPU NVIDIA A100 (80GB),
+implementado con la librería Ultralytics. Los archivos de configuración completos
+están disponibles en el repositorio (\texttt{configs/yolov11.yaml} y
+\texttt{configs/model2.yaml}).
+
+% ─── III. RESULTADOS ─────────────────────────────────────────────────────────
+\section{Resultados Experimentales y Análisis}
+
+Esta sección reporta los resultados obtenidos para RT-DETR-L sobre el conjunto de
+test (169 imágenes, 96 anotaciones), evaluado con el mejor \textit{checkpoint}
+(época 38) bajo el protocolo descrito en la Sección~II. La evaluación de YOLOv11m
+sobre el mismo conjunto de test se encuentra en curso al momento de este informe;
+la Tabla~\ref{tab:results} se completará con dichos valores en la versión final.
+
+\begin{table}[htbp]
+\caption{Comparación de métricas en el conjunto de test}
+\label{tab:results}
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Modelo} & \textbf{mAP@0.5} & \textbf{mAP@0.5:0.95} & \textbf{F1} & \textbf{Lat. (ms)} \\
+\midrule
+YOLOv11m  & -- & -- & -- & -- \\
+RT-DETR-L & 0{,}2475 & 0{,}0802 & 0{,}2854 & 41{,}68 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+RT-DETR-L alcanzó una latencia mediana de 41{,}68~ms por imagen (P95:
+46{,}38~ms; $\approx$24 FPS) sobre una GPU NVIDIA A100, sin \textit{batching}
+(\textit{batch size}~=~1), lo que resulta compatible con un escenario de
+asistencia diagnóstica no crítico en tiempo real, aunque debe evaluarse en
+hardware de despliegue equivalente al clínico antes de extraer conclusiones
+sobre viabilidad en producción.
+
+\subsection{Análisis por Clase}
+
+Dado que el mAP global promedia clases con soporte muy dispar (desde 6 hasta 43
+instancias en test), se analiza el desempeño por clase en la
+Tabla~\ref{tab:per-class}.
+
+\begin{table}[htbp]
+\caption{Métricas por clase de RT-DETR-L en el conjunto de test}
+\label{tab:per-class}
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Clase} & \textbf{P} & \textbf{R} & \textbf{AP@0.5} \\
+\midrule
+forearm fracture  & 0{,}720 & 0{,}553 & 0{,}512 \\
+humerus fracture  & 0{,}387 & 0{,}467 & 0{,}375 \\
+shoulder fracture & 0{,}327 & 0{,}235 & 0{,}238 \\
+wrist positive    & 0{,}093 & 0{,}167 & 0{,}176 \\
+fingers positive  & 0{,}395 & 0{,}122 & 0{,}140 \\
+elbow positive    & 0{,}000 & 0{,}000 & 0{,}043 \\
+\midrule
+\textbf{Media}    & \textbf{0{,}320} & \textbf{0{,}257} & \textbf{0{,}248} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+El modelo alcanza su mejor desempeño en \texttt{forearm fracture}
+(AP@0.5~=~0,512) y \texttt{humerus fracture} (AP@0.5~=~0,375), clases con
+anotaciones de mayor tamaño relativo y contorno óseo bien definido. En el
+extremo opuesto, \texttt{elbow positive} obtiene Precision y Recall nulos al
+umbral de confianza de inferencia (0,25): el modelo no logró aprender un
+patrón discriminativo para esta clase, pese a contar con la tercera mayor
+cantidad de anotaciones en entrenamiento (339), lo que sugiere que el
+problema no es puramente de escasez de datos sino de variabilidad
+morfológica o solapamiento visual con clases vecinas (a confirmar con la
+matriz de confusión). \texttt{wrist positive}, pese a ser la clase con menor
+soporte en test (6 instancias), no es la de peor desempeño, lo que indica que
+el tamaño de muestra por sí solo no explica el patrón de errores observado.
+
+\subsection{Dinámica de Entrenamiento}
+
+RT-DETR-L mostró una convergencia rápida durante las primeras 30 a 38 épocas,
+entrando luego en una meseta sin mejoras sostenidas en el \textit{fitness} de
+validación, lo que activó el criterio de \textit{early stopping} en la época
+58. Este comportamiento es consistente con la sensibilidad reportada de los
+\textit{decoders} DETR a la capacidad del dataset: con 3.631 imágenes de
+entrenamiento, el mecanismo de \textit{matching} húngaro dispone de señal
+limitada para refinar las consultas (\textit{queries}) de las clases con
+peor desempeño.
+
+% TODO: agregar curvas de entrenamiento (Fig. training_curves.png), matriz de
+%       confusión (confusion_matrix_normalized.png) y ejemplos cualitativos
+%       (qualitative_predictions.png) como figuras una vez descargados desde
+%       Drive al repositorio (carpeta results/).
+% TODO: completar Tabla~\ref{tab:results} y esta sección con los resultados
+%       de YOLOv11m para habilitar la comparación directa.
+
+% ─── IV. CONCLUSIONES ────────────────────────────────────────────────────────
+\section{Conclusiones}
+
+% [TODO: completar con al menos 5 conclusiones basadas en los resultados]
+
+\begin{enumerate}
+    \item ...
+    \item ...
+    \item ...
+    \item ...
+    \item ...
+\end{enumerate}
+
+% ─── BIBLIOGRAFÍA ────────────────────────────────────────────────────────────
+\begin{thebibliography}{00}
+
+\bibitem{b1}
+P.~N.~Srinivasu, G.~L.~A.~Kumari, S.~C.~Narahari, S.~Ahmed y A.~Alhumam,
+``Exploring the impact of hyperparameter and data augmentation in YOLO V10 for
+accurate bone fracture detection from X-ray images,''
+\textit{Scientific Reports}, vol.~15, art.~9828, 2025.
+doi: 10.1038/s41598-025-93505-4.
+
+\bibitem{b2}
+Z.~Su, X.~Adam, Y.~Zhao, H.~Fan, Z.~Dong y L.~Zhao,
+``Skeletal fracture detection with deep learning: A comprehensive review,''
+\textit{Diagnostics}, vol.~13, n.º~20, art.~3245, 2023.
+doi: 10.3390/diagnostics13203245.
+
+\bibitem{b3}
+Ultralytics, ``YOLO11: State-of-the-Art Object Detection,'' 2024.
+[En línea]. Disponible: https://github.com/ultralytics/ultralytics
+
+\bibitem{b4}
+Y.~Zhao, W.~Lv, S.~Xu, J.~Wei, G.~Wang, Q.~Dang, Y.~Liu y J.~Chen,
+``DETRs Beat YOLOs on Real-time Object Detection,''
+\textit{arXiv preprint arXiv:2304.08069}, 2023.
+
+\bibitem{b5}
+Roboflow Universe, ``Bone Fracture Detection Dataset,'' 2024.
+[En línea]. Disponible: https://universe.roboflow.com/veda/bone-fracture-detection-daoon
+
+\bibitem{b6}
+R.~Y.~Ju y W.~Cai,
+``Fracture detection in pediatric wrist trauma X-ray images using YOLOv8 algorithm,''
+\textit{Scientific Reports}, vol.~13, art.~20077, 2023.
+doi: 10.1038/s41598-023-47460-7.
+
+\end{thebibliography}
+
+\end{document}
