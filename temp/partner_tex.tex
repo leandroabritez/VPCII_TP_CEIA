@@ -1,0 +1,189 @@
+﻿\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+%Template version as of 6/27/2024
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{booktabs}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Detecci├│n Autom├ítica de Fracturas ├ôseas en Radiograf├¡as Mediante Modelos de Visi├│n por Computadora Basados en Deep Learning}
+
+\author{
+\IEEEauthorblockN{Lucia T. Capon Paul}
+\IEEEauthorblockA{\textit{CEIA -- FIUBA} \\
+Buenos Aires, Argentina}
+\and
+\IEEEauthorblockN{Cesar Orellana}
+\IEEEauthorblockA{\textit{CEIA -- FIUBA} \\
+Buenos Aires, Argentina}
+\and
+\IEEEauthorblockN{Leandro Britez}
+\IEEEauthorblockA{\textit{CEIA -- FIUBA} \\
+Buenos Aires, Argentina}
+}
+
+\maketitle
+
+% ÔöÇÔöÇÔöÇ ABSTRACT ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+\begin{abstract}
+% TODO: completar tras finalizar los experimentos (~150 palabras)
+% Incluir: problema, enfoque, modelos comparados (YOLOv11 vs RT-DETR),
+%          dataset usado, m├®tricas clave obtenidas, y principal conclusi├│n.
+La detecci├│n automatizada de fracturas ├│seas en im├ígenes radiogr├íficas representa
+un desaf├¡o cl├¡nico de alto impacto. En este trabajo se presenta el desarrollo de un
+prototipo basado en modelos de detecci├│n de objetos preentrenados para la
+identificaci├│n y localizaci├│n de fracturas en radiograf├¡as.
+Se comparan dos arquitecturas: YOLOv11, representativa del paradigma
+anchor-free de una etapa, y RT-DETR, un detector basado en transformers de
+tiempo real. Los modelos son ajustados (\textit{fine-tuned}) sobre el dataset
+p├║blico \textit{Bone Fracture Detection} de Roboflow Universe.
+La evaluaci├│n se realiza en t├®rminos de mAP@0.5, mAP@0.5:0.95, F1-score y
+latencia de inferencia. [COMPLETAR CON RESULTADOS].
+\end{abstract}
+
+\begin{IEEEkeywords}
+detecci├│n de objetos, fracturas ├│seas, YOLOv11, RT-DETR, deep learning,
+visi├│n por computadora, radiograf├¡as.
+\end{IEEEkeywords}
+
+% ÔöÇÔöÇÔöÇ I. INTRODUCCI├ôN ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+\section{Introducci├│n}
+
+La interpretaci├│n de im├ígenes radiogr├íficas es una tarea cl├¡nica fundamental en
+el diagn├│stico de traumatismos y patolog├¡as ├│seas. La identificaci├│n visual de
+fracturas requiere experiencia especializada y puede verse afectada por factores
+como la carga de trabajo y la fatiga del profesional \cite{b1}.
+
+Los sistemas de visi├│n por computadora basados en \textit{deep learning} han
+demostrado capacidad para asistir en tareas de detecci├│n y localizaci├│n de
+patolog├¡as en im├ígenes m├®dicas \cite{b2}. En particular, los modelos de
+detecci├│n de objetos permiten no solo determinar la presencia de una lesi├│n,
+sino tambi├®n localizar su posici├│n mediante cuadros delimitadores
+(\textit{bounding boxes}).
+
+% TODO: agregar caso real de aplicaci├│n similar (no mayor a 8 a├▒os)
+
+El objetivo de este trabajo es desarrollar y evaluar un prototipo funcional
+capaz de detectar autom├íticamente fracturas ├│seas en radiograf├¡as, comparando
+el desempe├▒o de dos arquitecturas modernas: YOLOv11 \cite{b3} y RT-DETR \cite{b4}.
+
+% ÔöÇÔöÇÔöÇ II. METODOLOG├ìA ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+\section{Metodolog├¡a, Dise├▒o y Desarrollo}
+
+\subsection{Dataset}
+
+Se utiliz├│ el dataset \textit{Bone Fracture Detection} disponible p├║blicamente
+en Roboflow Universe \cite{b5}. El dataset contiene im├ígenes de radiograf├¡as con
+anotaciones en formato YOLO (\textit{bounding boxes}). Las particiones utilizadas
+son:
+
+\begin{table}[htbp]
+\caption{Distribuci├│n del dataset por split}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Split} & \textbf{Im├ígenes} & \textbf{Anotaciones} \\
+\midrule
+Train & -- & -- \\  % TODO: completar con valores reales
+Valid & -- & -- \\
+Test  & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\subsection{Preprocesamiento y Data Augmentation}
+
+Todas las im├ígenes fueron redimensionadas a $640 \times 640$ p├¡xeles. Se
+aplicaron las siguientes t├®cnicas de \textit{data augmentation} durante
+el entrenamiento: variaciones de matiz y saturaci├│n (HSV), flip horizontal,
+traslaci├│n aleatoria y escalado. Para RT-DETR se desactiv├│ el \textit{mosaic
+augmentation} por ser incompatible con la arquitectura \textit{transformer}.
+
+\subsection{Arquitecturas}
+
+\textbf{YOLOv11} \cite{b3}: detector \textit{anchor-free} de una sola etapa.
+Se utiliz├│ la variante \texttt{yolo11m.pt} preentrenada en COCO.
+
+\textbf{RT-DETR} \cite{b4}: detector basado en transformers dise├▒ado para
+inferencia en tiempo real. Se utiliz├│ la variante \texttt{rtdetr-l.pt}
+preentrenada en COCO.
+
+\subsection{Entrenamiento}
+
+Ambos modelos fueron ajustados durante 100 ├®pocas con optimizador
+\textit{AdamW}. Los hiperpar├ímetros completos se documentan en el repositorio
+de GitHub en los archivos \texttt{configs/yolov11.yaml} y
+\texttt{configs/model2.yaml}.
+
+% ÔöÇÔöÇÔöÇ III. RESULTADOS ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+\section{Resultados Experimentales y An├ílisis}
+
+% TODO: completar esta secci├│n tras correr los experimentos.
+
+\begin{table}[htbp]
+\caption{Comparaci├│n de m├®tricas en el conjunto de test}
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Modelo} & \textbf{mAP@0.5} & \textbf{mAP@0.5:0.95} & \textbf{F1} & \textbf{Latencia (ms)} \\
+\midrule
+YOLOv11  & -- & -- & -- & -- \\
+RT-DETR  & -- & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+% Agregar figuras de curvas PR, ejemplos de detecci├│n, an├ílisis de errores.
+
+% ÔöÇÔöÇÔöÇ IV. CONCLUSIONES ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+\section{Conclusiones}
+
+% TODO: al menos 5 conclusiones (requerimiento de la c├ítedra)
+
+\begin{enumerate}
+    \item ...
+    \item ...
+    \item ...
+    \item ...
+    \item ...
+\end{enumerate}
+
+% ÔöÇÔöÇÔöÇ BIBLIOGRAF├ìA ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+\begin{thebibliography}{00}
+
+\bibitem{b1}
+% TODO: completar con paper de Papers/ relevante
+Author, ``Title,'' Journal, vol. X, pp. Y--Z, year.
+
+\bibitem{b2}
+% TODO: completar con paper de Papers/
+Author, ``Title,'' in Proc. Conference, year, pp. X--Y.
+
+\bibitem{b3}
+Ultralytics, ``YOLO11: State-of-the-Art Object Detection,'' 2024.
+[Online]. Available: https://github.com/ultralytics/ultralytics
+
+\bibitem{b4}
+L. Leng et al., ``DETRs Beat YOLOs on Real-time Object Detection,''
+arXiv:2304.08069, 2023.
+
+\bibitem{b5}
+Roboflow Universe, ``Bone Fracture Detection Dataset,'' 2024.
+[Online]. Available: https://universe.roboflow.com/veda/bone-fracture-detection-daoon
+
+\end{thebibliography}
+
+\end{document}
