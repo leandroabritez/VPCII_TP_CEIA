@@ -10,7 +10,6 @@ readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10,<3.13"
 authors = [
-  { name = "Lucia T. Capon Paul" },
   { name = "Cesar Orellana" },
   { name = "Leandro Britez" },
 ]
