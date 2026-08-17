@@ -44,34 +44,41 @@ def plot_pr_curves(
     save_path: Path | None = None,
 ) -> None:
     """
-    Dibuja las curvas Precision-Recall para cada modelo.
-
-    Args:
-        results_dict: Dict {model_name: ultralytics validation results object}
-        save_path: Ruta opcional para guardar la figura.
+    Dibuja las curvas Precision-Recall continuas para cada modelo.
     """
     fig, ax = plt.subplots(figsize=(8, 6))
 
     for name, result in results_dict.items():
-        # ultralytics almacena curvas en result.box.curves_results
-        # Intentamos acceder a precisión y recall por umbral si está disponible
-        try:
-            px = result.box.curves_results[0]   # recall values
-            py = result.box.curves_results[1]   # precision values
-            ax.plot(px, py, label=name, linewidth=2)
-        except Exception:
-            # fallback: graficar punto único
-            b = result.box
-            ax.scatter([float(b.mr)], [float(b.mp)], label=name, s=120, zorder=5)
+        # Extraer el Item 0 (Recall vs Precision)
+        pr_item = result.box.curves_results[0]
+        
+        recall = pr_item[0]               # shape (1000,)
+        precision_matrix = pr_item[1]     # shape (6, 1000)
+        
+        # Promedio sobre todas las clases
+        precision_mean = precision_matrix.mean(axis=0)
+        
+        map50 = float(result.box.map50)
+        ax.plot(
+            recall,
+            precision_mean,
+            label=f"{name} (mAP@0.5 = {map50:.3f})",
+            linewidth=2.5,
+        )
 
     ax.set_xlabel("Recall", fontsize=12)
     ax.set_ylabel("Precision", fontsize=12)
     ax.set_title("Curvas Precision-Recall – Test Set", fontsize=14, fontweight="bold")
-    ax.legend(fontsize=11)
-    ax.set_xlim([0, 1])
-    ax.set_ylim([0, 1])
+    ax.legend(fontsize=11, loc="lower left")
+    ax.set_xlim([0.0, 1.0])
+    ax.set_ylim([0.0, 1.05])
+    ax.grid(True, linestyle="--", alpha=0.6)
     plt.tight_layout()
 
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+        save_path = Path(save_path)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        print(f"Curvas guardadas exitosamente en: {save_path}")
+
     plt.show()

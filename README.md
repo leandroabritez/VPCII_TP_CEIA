@@ -16,18 +16,20 @@ La detección de fracturas óseas en estudios radiográficos es una tarea críti
 El proyecto desarrolla un prototipo capaz de detectar automáticamente la presencia y ubicación de fracturas en radiografías utilizando modelos de Deep Learning preentrenados (Object Detection con bounding boxes).
 
 
-## Modelos comparados e Hipótesis Evaluadas
+## Configuración Experimental y Resultados
 
-El proyecto compara dos paradigmas fundamentales del estado del arte:
-1. **Modelos Convolucionales (YOLOv11):** Presenta ventajas mediante bloques de extracción C3k2 y C2PSA. Procesamiento espacial más apto para texturas óseas pero que requiere *localidad inductiva*.
-2. **Transformers de Detección (RT-DETR-L):** Aprovecha la *Atención Global* de los Vision Transformers (ViT) y un *Codificador Híbrido multiescala* para representar la continuidad estructural de todo el hueso, resultando ideal en fallas complejas de rayos X. Elimina NMS basándose en *Selección de Consultas* probabilísticas, reduciendo falsos negativos en lesiones ortopédicas solapadas (ej. fracturas conminutas).
+El proyecto evalúa dos arquitecturas de detección de objetos bajo un diseño experimental estructurado en tres configuraciones, tomando como inspiración metodológica trabajos recientes de literatura sobre la materia:
 
-| Modelo | Descripción |
-|--------|-------------|
-| **YOLO11m** | Modelo \textit{anchor-free} de una sola etapa con priorización espacial C2PSA. |
-| **RT-DETR-L** | Detection Transformer. NMS-free, encoder híbrido y auto-atención global clínica. |
+1. **YOLO11m + RAW (Baseline):** Evaluación directa sobre las imágenes originales para determinar el desempeño nativo de la arquitectura. Alcanzó un **mAP@0.5 de 0.2550** y una inferencia rápida de **10.90 ms**.
+2. **YOLO11m + Preprocesamiento:** Aplicación de un pipeline fotométrico (CLAHE + *unsharp masking*). Contrario a antecedentes paralelos, el rendimiento decayó fuertemente a un **mAP@0.5 de 0.0766**.
+3. **RT-DETR-L + Preprocesamiento:** Evaluación complementaria utilizando un detector basado en Transformers (*Global-Attention*). Logró un **mAP@0.5 de 0.2475** y un **F1-score de 0.2854**, con una latencia mayor de **41.68 ms**.
 
-La elección final se justifica mediante mAP@0.5, mAP@0.5:0.95, F1, Precision, Recall y latencia de inferencia.
+**Conclusiones Clave:**
+* El preprocesamiento fotométrico intensivo no produce beneficios universales invariantes a la arquitectura subyacente.
+* El fuerte desbalance de clases impactó directamente sobre lesiones subrrepresentadas, revelando la fragilidad local.
+* RT-DETR evidenció su superioridad para lidiar con el preprocesamiento agresivo de las imágenes y modelar fracturas superpuestas, aunque incurriendo en un mayor coste de rendimiento en milisegundos.
+
+Consulte el paper oficial formato IEEE en la carpeta `LaTeX/` para acceder a la investigación metodológica rigurosa y extendida.
 
 
 ## Dataset
@@ -58,8 +60,8 @@ VPCII_TP_CEIA/
 │   ├── yolov11.yaml           # hiperparámetros YOLOv11
 │   └── model2.yaml            # hiperparámetros RT-DETR
 ├── results/                   # experimentos, plots, checkpoints
-├── Papers/                    # bibliografía PDF
 ├── LaTeX/                     # paper final formato IEEE
+│   └── img/                   # curvas PR, matrices y detecciones predictivas
 ├── pyproject.toml
 ├── uv.lock
 ├── requirements.txt
