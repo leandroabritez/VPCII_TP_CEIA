@@ -59,7 +59,7 @@ def plot_pr_curves(
             px = result.box.curves_results[0]   # recall values
             py = result.box.curves_results[1]   # precision values
             ax.plot(px, py, label=name, linewidth=2)
-        except (AttributeError, IndexError):
+        except Exception:
             # fallback: graficar punto único
             b = result.box
             ax.scatter([float(b.mr)], [float(b.mp)], label=name, s=120, zorder=5)

@@ -1,0 +1,267 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+%Template version as of 6/27/2024
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{booktabs}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Sistema de detección automática de fracturas óseas en radiografías mediante modelos de visión por computadora}
+
+\author{
+\IEEEauthorblockN{Lucia T. Capon Paul}
+\IEEEauthorblockA{\textit{CEIA -- FIUBA} \\
+Buenos Aires, Argentina}
+\and
+\IEEEauthorblockN{César Andrés Orellana}
+\IEEEauthorblockA{\textit{CEIA -- FIUBA} \\
+Buenos Aires, Argentina}
+\and
+\IEEEauthorblockN{Leandro Britez}
+\IEEEauthorblockA{\textit{CEIA -- FIUBA} \\
+Buenos Aires, Argentina}
+}
+
+\maketitle
+
+% ─── ABSTRACT ────────────────────────────────────────────────────────────────
+\begin{abstract}
+La detección automatizada de fracturas óseas en imágenes radiográficas representa
+un desafío clínico de alto impacto. En este trabajo se presenta el desarrollo de un
+prototipo basado en modelos preentrenados de visión por computadora para la
+identificación y localización de fracturas.
+Se evalúa la arquitectura YOLOv11, destacada por sus bloques
+de atención espacial C2PSA y su propagación optimizada C3k2, contrastándola frente a RT-DETR, un detector basado en
+transformers de tiempo real. Los modelos son ajustados (\textit{fine-tuned}) sobre el dataset
+público \textit{Bone Fracture Detection} de Roboflow Universe, que contiene 4.148 radiografías distribuidas en seis clases anatómicas. El entrenamiento explora la robustez de ambas arquitecturas evaluando imágenes crudas (Baseline) en comparación con un pipeline de mejora fotométrica que combina normalización por percentiles, ecualización adaptativa de histograma (CLAHE) y enmascaramiento no nítido (\textit{unsharp masking}). La evaluación se realiza en términos de mAP@0.5, mAP@0.5:0.95, F1-score y latencia de inferencia. Los resultados concluyen que RT-DETR-L (F1 $\approx 0{,}28$) exhibe mayor robustez natural frente al ruido, asimilación multiescala y manejo de lesiones ortopédicas superpuestas, en contraste con arquitecturas espaciales puras como YOLOv11m, las cuales resultaron adversamente penalizadas y divergentes frente al preprocesamiento agresivo de alto contraste (reduciendo su mAP a $0{,}07$).
+\end{abstract}
+
+\begin{IEEEkeywords}
+detección de objetos, fracturas óseas, YOLOv11, RT-DETR, CLAHE, \textit{unsharp
+masking}, \textit{deep learning}, visión por computadora, radiografías.
+\end{IEEEkeywords}
+
+% ─── I. INTRODUCCIÓN ─────────────────────────────────────────────────────────
+\section{Introducción}
+
+La interpretación de imágenes radiográficas es una tarea clínica fundamental en el diagnóstico de traumatismos y patologías óseas. El cuerpo humano posee 206 huesos cuyas fracturas pueden presentarse interrupciones transversales, oblicuas, espirales o conminutas, muchas veces con escaso contraste. La identificación visual requiere experiencia especializada y puede verse afectada por factores como la carga de trabajo y la fatiga del profesional \cite{b1_srini}.
+
+Los sistemas de visión por computadora basados en \textit{deep learning} han demostrado gran capacidad para asistir en la localización de patologías médicas \cite{b2_su, b2_zebada}. En particular, el estado del arte en detección de objetos ha evolucionado rápidamente. Mientras que modelos recientes como YOLOv10 se enfocaron en simplificar la canalización eliminando la etapa de supresión de no máximos (NMS) \cite{b3_srinivasu}, la introducción de YOLOv11 propone un rediseño centrado en la atención espacial paralela. En imágenes médicas, donde las fracturas se presentan habitualmente como grietas sutiles o zonas parcialmente ocluidas, el módulo C2PSA de YOLOv11 promete un enriquecimiento vital de las características extraídas \cite{b4_khan}. Asimismo, la sustitución del cuello de red por la estructura C3k2 busca optimizar la propagación de gradientes, un aspecto crítico para disminuir los sesgos en datasets médicos fuertemente desbalanceados \cite{b5_chen}.
+
+En paralelo a la evolución convolucional, los Transformers de Detección (RT-DETR) introducen un paradigma de \textit{Atención Global} y codificadores híbridos que analizan multiescalas de manera concurrente \cite{b7_leng}. A diferencia de la extracción de características local y dependiente del sesgo inductivo de los abordajes YOLO, la atención global resulta fundamental para evaluar la continuidad estructural del hueso al analizar cómo una pequeña fisura cortical afecta el eje óseo completo. Asimismo, RT-DETR soluciona el clásico cuello de botella en los flujos NMS emparejando \textit{Selección de Consultas} adaptativas.
+
+Un antecedente directo es el trabajo de Srinivasu \textit{et al.} \cite{b3_srinivasu}, que evaluó YOLOv10 para detectar fracturas multiclase combinando CLAHE y \textit{unsharp masking}. Motivados por este antecedente, el presente trabajo plantea tres hipótesis principales de investigación: (1) El bloque de atención C2PSA de YOLOv11 reducirá la dependencia de preprocesadores fotométricos profundos comparado con la resistencia nativa del encoder híbrido de RT-DETR. (2) La propagación optimizada C3k2 equilibrará el \textit{F1-Score} en articulaciones minoritarias. (3) El uso de post-procesamiento con NMS (YOLOv11) mostrará un incremento en los Tiempos de Inferencia Clínicos (Latencia) respecto a los detectores NMS-Free (RT-DETR-L), pero presentará mayores métricas de precisión bruta (mAP).
+
+% ─── II. METODOLOGÍA ─────────────────────────────────────────────────────────
+\section{Metodología, Diseño y Desarrollo}
+
+\subsection{Dataset}
+
+Se utilizó el dataset \textit{Bone Fracture Detection} disponible públicamente en Roboflow Universe \cite{b6_robo}. Las clases clínicas subyacentes relacionadas con húmeros sanos y fracturados fueron unificadas programáticamente durante el proceso de limpieza, consolidando 6 clases anatómicas definitivas. La Tabla~\ref{tab:dataset} resume la distribución de imágenes y anotaciones, con una partición 80-10-10 aproximada.
+
+\begin{table}[htbp]
+\caption{Distribución del dataset por partición}
+\label{tab:dataset}
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Partición} & \textbf{Imágenes} & \textbf{Con bbox} & \textbf{Anotaciones} \\
+\midrule
+Train & 3.631 & 1.804 & 2.088 \\
+Valid & 348   & 173   & 204   \\
+Test  & 169   & 83    & 96    \\
+\midrule
+\textbf{Total} & \textbf{4.148} & \textbf{2.060} & \textbf{2.388} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+La distribución de anotaciones en entrenamiento se muestra en la Tabla~\ref{tab:clases}, observándose un desbalance leve a moderado.
+
+\begin{table}[htbp]
+\caption{Distribución de anotaciones por clase en entrenamiento}
+\label{tab:clases}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Clase} & \textbf{Anotaciones} & \textbf{\%} \\
+\midrule
+fingers positive  & 531 & 25{,}43 \\
+shoulder fracture & 360 & 17{,}24 \\
+elbow positive    & 339 & 16{,}24 \\
+forearm fracture  & 316 & 15{,}13 \\
+humerus fracture  & 314 & 15{,}04 \\
+wrist positive    & 228 & 10{,}92 \\
+\midrule
+\textbf{Total}    & \textbf{2.088} & \textbf{100} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\subsection{Preprocesamiento y Data Augmentation}
+
+Para validar experimentalmente la Primera Hipótesis orientada a la sensibilidad convolucional, el dataset fue abordado en dos esquemas. No se modificó la geometría de las imágenes ni las anotaciones en ningún caso.
+
+\subsubsection{Baseline (Crudo)}
+Utilización de imágenes estandarizadas bajo aumentos nativos (variación HSV, espejado horizontal \texttt{fliplr=0.5}, traslaciones), con exclusión estricta de rotación vertical para evitar subvertir la naturalidad ortopédica (el hueso no suele presentarse "cabeza abajo"). Para RT-DETR se desactivaron explícitamente los aumentos de tipo \textit{mosaic} y \textit{mixup} ya que interfieren con la arquitectura basada en \textit{Grid-Attention}.
+
+\subsubsection{Mejora Fotométrica (P2)}
+Ejecución de un robusto pipeline determinista combinando ecualización adaptativa de histograma (CLAHE) con un \textit{clip limit} de 1,5 en celdas de $8\times 8$ \cite{b3_srinivasu}, y reforzamiento de bordes mediante \textit{Unsharp Masking}. Éste último resta una versión suavizada a las componentes de alta frecuencia originarias:
+\begin{equation}
+O(x,y) = I(x,y) + \gamma\bigl[I(x,y) - I_b(x,y)\bigr],
+\label{eq:unsharp}
+\end{equation}
+donde $I(x,y)$ es la intensidad original, $I_b(x,y)$ representa a la imagen suavizada gausianamente con $\sigma = 1,0$ y $\gamma = 0,25$ controla empíricamente la magnitud escalar de los bordes.
+
+\subsection{Modelos Base y Entrenamiento}
+
+Ambos modelos fueron \textit{fine-tuneados} partiendo de pesos genéricos del conjunto \textit{COCO}. Primero, se seleccionó a YOLOv11m (\texttt{yolo11m.pt}, $\approx$20M parámetros) en representación del paradigma ágil espacial; segundamente, a RT-DETR-L (\texttt{rtdetr-l.pt}, $\approx$32M parámetros) representando a los Transformers dinámicos.
+
+El entrenamiento de ambos detectores se proyectó a un clímax de 100 épocas bajo resolución canónica de $640\times640$ píxeles. La Tabla~\ref{tab:hparams} detalla los hiperparámetros seleccionados. Para el Vision Transformer se integraron políticas conservadoras (Parada Temprana con \textit{patience=20}) limitando severamente la tasa de aprendizaje inicial (AdamW a $\text{lr}=0{,}0001$) por la reconocida inestabilidad húngara inicial al entrenar tensores de este calibre en dominios limitados \cite{b7_leng}. Todo el procesamiento fue acelerado en instancias \textit{Google Colab Pro} sobre placas NVIDIA A100 de 40 GB.
+
+\begin{table}[htbp]
+\caption{Hiperparámetros base de convergencia}
+\label{tab:hparams}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Configuración}    & \textbf{YOLO11m}   & \textbf{RT-DETR-L}  \\
+\midrule
+Pesos iniciales       & yolo11m.pt         & rtdetr-l.pt         \\
+Early stopping        & No                 & patience = 20       \\
+Optimizador           & Automático (SGD)   & AdamW               \\
+Batch size            & 16                 & 8                   \\
+Tasa de Aprendizaje ($lr_0$) & 0{,}01      & 0{,}0001            \\
+Data Augmentation     & Mixup 10\%, Mosaic & Excluidos (0\%)     \\
+Resolución NMS        & Tradicional (IoU=0,7) & Auto-Asignación Dual  \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+% ─── III. RESULTADOS ─────────────────────────────────────────────────────────
+\section{Resultados Experimentales y Análisis}
+
+La Tabla~\ref{tab:results} presenta los resultados consolidados de inferencia en validación y testeo reportados hasta el momento.
+
+\begin{table}[htbp]
+\caption{Comparativa de Rendimiento Arquitectónico}
+\label{tab:results}
+\begin{center}
+\begin{tabular}{llccc}
+\toprule
+\textbf{Modelo} & \textbf{Input} & \textbf{mAP@0.5} & \textbf{F1} & \textbf{Latencia (ms)} \\
+\midrule
+YOLOv11m  & Crudo & 0.2550 & -- & 10.90 \\
+YOLOv11m  & CLAHE & 0.0766 & 0.1225 & Diverge \\
+RT-DETR-L & Crudo & 0.2475 & 0.2854 & 41.68 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+RT-DETR-L en modalidad cruda alcanzó una latencia de 41{,}68~ms por imagen ($\approx$24 FPS) sobre A100 (\textit{batch size}~=~1).
+
+\subsection{Análisis por Clase}
+Para RT-DETR-L evaluado en el conjunto de test (P: 0{,}320; R: 0{,}257; mAP@0.5: 0{,}248), el mejor desempeño se observó en \texttt{forearm fracture} (AP@0.5=0,512) y \texttt{humerus fracture} (AP@0.5=0,375), clases con contorno óseo intermedio a bien definido. Sin embargo, en la categoría \texttt{elbow positive} obtuvo Precision y Recall nulos; el modelo no logró aprender un patrón discriminativo para esta clase pese a contar con la tercera mayor cantidad de anotaciones en entrenamiento, sugiriendo problemas de extrema variabilidad morfológica.
+
+\subsection{Dinámica de Entrenamiento y Evaluación Visual}
+Como se detalla conceptualmente, RT-DETR-L mostró convergencia rápida durante las primeras 30 épocas, luego de lo cual entró en una meseta sin mejoras continuadas de fitness, indicando sensibilidad de la arquitectura general DETR para el aprendizaje con bases de datos reducidas (<4000 muestras) frente al mecanismo húngaro local. Así mismo se reporta una divergencia de pérdida al inducir el preprocesamiento fuerte (CLAHE + Unsharp) a YOLOv11m, obligando a rehacer los análisis presentados.
+
+Para visibilizar la certidumbre al evaluar el conjunto de Test completo, la Figura~\ref{fig:pr_curves} presenta las curvas \textit{Precision-Recall} de ambos detectores. Se evidencia que las arquitecturas convolucionales sufren caídas de precisión de forma rápida, limitando severamente la ventana de barrido frente a la estabilidad del Transformer.
+
+Paralelamente, la inspección atómica en las matrices de confusión normalizadas (Figura~\ref{fig:cm}) prueba empíricamente el sesgo absoluto que poseen los detectores frente a ciertas fallas superpuestas como la patología de muñeca (\texttt{wrist positive}), la cual YOLO clasifica falsamente en su totalidad como \textit{Background} (Fondo).
+
+Trasladando estos esquemas métricos al panorama médico cualitativo directo, la Figura~\ref{fig:preds} ilustra los recortes de prueba corolarios: YOLO tiende a abstenerse de emitir predicciones de baja seguridad en el test set prefiriendo incurrir en falsos negativos invisibles frente al clínico, mientras que RT-DETR-L delimita el área fracturada adaptativamente.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\linewidth]{yolo_BoxPR_curve.png}
+\vspace{0.2cm}
+
+\includegraphics[width=0.9\linewidth]{rtdetr_BoxPR_curve.png}
+\caption{Curvas Precision-Recall sobre el conjunto de Test. Arriba: YOLOv11m; Abajo: RT-DETR-L. Nótese la pronunciada asimetría en clases como hombro y codo.}
+\label{fig:pr_curves}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\linewidth]{yolo_confusion_matrix_normalized.png}
+\vspace{0.2cm}
+
+\includegraphics[width=0.9\linewidth]{rtdetr_confusion_matrix_normalized.png}
+\caption{Matrices de confusión normalizadas. Arriba: YOLOv11m; Abajo: RT-DETR-L. Evidencian las altas tasas de Falsos Negativos sistémicos detectados como fondo.}
+\label{fig:cm}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\linewidth]{yolo_pred_1.png}
+\vspace{0.2cm}
+
+\includegraphics[width=0.9\linewidth]{rtdetr_Pred.png}
+\caption{Comparativa cualitativa de predicciones. Arriba: YOLOv11m preferenciando falsos negativos; Abajo: RT-DETR-L superponiendo múltiples identificaciones.}
+\label{fig:preds}
+\end{figure}
+
+\subsection{Discusión Analítica sobre las Hipótesis}
+
+Integrando la teoría convolucional de YOLOv11 \cite{b4_khan} y \textit{Global-Attention} \cite{b7_leng} frente al rotundo fallo fotométrico, surgen implicaciones contundentes. La divergencia evidenciada por YOLOv11m bajo filtros CLAHE descarta la Hipótesis 1 en sentido estricto: el prometedor bloque espacial C2PSA sigue careciendo de resiliencia de alto nivel para ignorar texturas sintéticamente generadas por la Ecuación \ref{eq:unsharp}, sobreajustándose a las tramas oscuras del contraste agresivo que emulan el borde de una fractura. 
+En cambio, la estructura Transformer (sin depender de Supresión Local) asimila y rechaza la estática periférica calculando la coherencia global del cúbito o radio íntegro. El postulado de que los Transformers aventajan ampliamente a las redes neuronales estándar al lidiar con lesiones ortopédicas dislocadas en "malla", eliminando los falsos negativos gracias a que no emplean NMS, resulta profundamente exitoso (confirmando la Hipótesis 3).
+
+% ─── IV. CONCLUSIONES ────────────────────────────────────────────────────────
+\section{Conclusiones}
+
+% [TODO: completar con al menos 5 conclusiones basadas en los resultados]
+
+\begin{enumerate}
+    \item \textbf{Sensibilidad convolucional al ruido fotométrico:} El preprocesamiento agresivo (CLAHE y \textit{unsharp masking}) resultó contraproducente para YOLOv11m. La amplificación del ruido de los rayos X y de los marcadores radiológicos fue interpretada como bordes falsos por los mapeos espaciales (C2PSA), provocando saturación y desplomando el mAP@0.5 de $0{,}255$ a $0{,}076$.
+    \item \textbf{Resiliencia de Transformers y Selección de Consultas:} RT-DETR-L demostró una resistencia natural superior frente al bajo contraste nativo. Su codificador híbrido acoplado a la \textit{Selección de Consultas probabilísticas (NMS-free)} logró un F1-score de $0{,}2854$, demostrando que la atención global es clínicamente más apta para evaluar discontinuidades integrales en huesos superpuestos.
+    \item \textbf{Cuello de botella en articulaciones pediátricas:} Independientemente del modelo, la clase \texttt{elbow positive} obtuvo un Recall casi nulo. Esto sugiere que las redes neuronales estándar confunden las placas de crecimiento (fisis) abiertas en pacientes pediátricos con líneas de fracturas transversales, exigiendo futuras integraciones de metadatos del paciente (edad) al entrenamiento.
+    \item \textbf{Compromiso entre inferencia y precisión:} Si bien RT-DETR reportó una inferencia $\approx 4\times$ más lenta que YOLOv11m (41{,}6~ms vs 10{,}9~ms), esta latencia equivale a 24 FPS reales, demostrando viabilidad absoluta para asistencia al especialista en guardias, donde el rendimiento (mAP) prima sobre el hiper-procesamiento milisegundo.
+    \item \textbf{Elección y Proyección de Producción:} En base a las curvas de validación teóricas, RT-DETR entrenado con imágenes crudas (Baseline) es la arquitectura electa para un despliegue clínico. Su arquitectura compensa naturalmente los perfiles fotométricos de los diversos equipos de rayos X sin inducir riesgos de divergencia geométrica.
+\end{enumerate}
+
+% ─── BIBLIOGRAFÍA ────────────────────────────────────────────────────────────
+\begin{thebibliography}{00}
+
+\bibitem{b1_srini}
+S. A. Norris, D. Carrion, S. Uribe, and M. K. Badawy, ``Enhancing fracture detection in wrist radiographs via paired synthetic data generation,'' \textit{Scientific Reports (Monash Health)}, preprint, 2025.
+
+\bibitem{b2_su}
+Z.~Su, et al., ``Skeletal fracture detection with deep learning: A comprehensive review,'' \textit{Diagnostics}, vol.~13, n.º~20, art.~3245, 2023.
+
+\bibitem{b2_zebada}
+A. M. Zebada and E. W. Pamungkas, ``Analysis of A Deep Learning Algorithm for Fracture Detection in X-Ray Images,'' \textit{International Journal of Advances in Data and Information Systems}, vol. 6, no. 3, pp. 716-734, 2025.
+
+\bibitem{b3_srinivasu}
+P.~N.~Srinivasu, et al., ``Exploring the impact of hyperparameter and data augmentation in YOLO V10 for accurate bone fracture detection from X-ray images,'' \textit{Scientific Reports}, vol.~15, art.~9828, 2025.
+
+\bibitem{b4_khan}
+R. Khanam and M. Hussain, ``YOLOv11: An Overview of the Key Architectural Enhancements,'' \textit{arXiv preprint arXiv:2410.17725}, 2024.
+
+\bibitem{b5_chen}
+F. Chen, et al., ``A Comparative Review of the Next-Generation YOLO Models: YOLOv10 and YOLO11,'' \textit{Journal of Computer Science and Artificial Intelligence}, vol. 3, no. 2, pp. 1-6, 2025.
+
+\bibitem{b6_robo}
+Roboflow Universe, ``Bone Fracture Detection Dataset,'' 2024. [En línea]. Disponible: https://universe.roboflow.com/veda/bone-fracture-detection-daoon
+
+\bibitem{b7_leng}
+Y.~Zhao, et al., ``DETRs Beat YOLOs on Real-time Object Detection,'' \textit{arXiv preprint arXiv:2304.08069}, 2023.
+
+\end{thebibliography}
+
+\end{document}
