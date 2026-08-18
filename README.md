@@ -60,8 +60,6 @@ VPCII_TP_CEIA/
 │   ├── yolov11.yaml           # hiperparámetros YOLOv11
 │   └── model2.yaml            # hiperparámetros RT-DETR
 ├── results/                   # experimentos, plots, checkpoints
-├── LaTeX/                     # paper final formato IEEE
-│   └── img/                   # curvas PR, matrices y detecciones predictivas
 ├── pyproject.toml
 ├── uv.lock
 ├── requirements.txt
